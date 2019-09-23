@@ -1,0 +1,85 @@
+C51 COMPILER V9.00   16位竞赛抢答器的设计可查看顺序1_4薩存                                 06/17/2019 19:08:12 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE 16位竞赛抢答器的设计可查看顺序1_4薩存
+OBJECT MODULE PLACED IN 16位竞赛抢答器的设计可查看顺序1-4锁存.OBJ
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE 16位竞赛抢答器的设计可查看顺序1-4锁存.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1           
+   2          #include<reg51.h>
+   3          sbit wr=P3^0; 
+   4          sbit cs1=P3^1; //控制段锁存器
+   5          sbit cs2=P3^2; //用于选择控制位码
+   6          
+   7          void delay_5ms()           //延时5ms
+   8          {
+   9   1              unsigned char i,j;
+  10   1              for(i=0;i<=25;i++)
+  11   1                      for(j=0;j<=2000;j++);   
+  12   1      }
+  13          
+  14          void scan()
+  15          {
+  16   1      unsigned char value,temp,dig;
+  17   1        P2=0xff;
+  18   1        P0=0xff;
+  19   1        value=0;
+  20   1        dig=P1&0xf0;  
+  21   1        temp=P1&0x0f;  
+  22   1          switch(temp)
+  23   1              {
+  24   2                case 0x01:
+  25   2                cs1=0; 
+  26   2                value=1;         
+  27   2                 P0=dig>>4;      
+  28   2                 cs1=1;       
+  29   2                  break;
+  30   2                case 0x02:
+  31   2                cs2=0; 
+  32   2                value=2;   
+  33   2                 P0=dig; 
+  34   2                 cs2=1;
+  35   2                  break;
+  36   2                case 0x03:
+  37   2                  value=3;
+  38   2                      P2=dig>>4;
+  39   2                  break;
+  40   2                case 0x04:
+  41   2                  value=4;
+  42   2                      P2=dig;
+  43   2                  break;
+  44   2                default:
+  45   2                  value=0;
+  46   2                  break;
+  47   2              }
+  48   1              
+  49   1      }
+  50           
+  51          void main()
+  52          {
+  53   1        while(1)
+  54   1        {              
+  55   2        wr=1;  
+C51 COMPILER V9.00   16位竞赛抢答器的设计可查看顺序1_4薩存                                 06/17/2019 19:08:12 PAGE 2   
+
+  56   2        scan();
+  57   2        delay_5ms();
+  58   2        }
+  59   1      }
+  60          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     90    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

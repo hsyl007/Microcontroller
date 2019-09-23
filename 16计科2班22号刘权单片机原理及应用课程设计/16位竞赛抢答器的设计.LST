@@ -1,0 +1,420 @@
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE 16位竞赛抢答器的设计
+OBJECT MODULE PLACED IN 16位竞赛抢答器的设计.OBJ
+COMPILER INVOKED BY: D:\Keil\C51\BIN\C51.EXE 16位竞赛抢答器的设计.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /*
+   2          MAX7219是一种集成化的串行输入/输出共阴极显示驱动器，
+   3          它连接微处理器与8位数字的7段数字LED显示，
+   4          也可以连接条线图显示器或者64个独立的LED。
+   5          其上包括一个片上的B型BCD编码器、多路扫描回路，段字驱动器，
+   6          而且还有一个8*8的静态RAM用来存储每一个数据。
+   7          */
+   8          
+   9          #include<reg51.h>
+  10          
+  11          sbit DIN=P3^0;//与max7219接口定义
+  12          sbit LOAD=P3^1;
+  13          sbit CLK=P3^2;    
+  14          sbit key_clear=P2^0;//主持人时间清除
+  15          sbit begin=P2^1;//主持人开始按键
+  16          sbit time_add=P2^2;//主持人时间加
+  17          sbit time_sub=P2^3;//主持人时间减  
+  18          sbit sounder=P3^7;//蜂鸣器
+  19          
+  20          unsigned char second=30;//秒表计数值
+  21          unsigned char counter=0;//counter每100，minite加1
+  22          unsigned char people=0;//抢答结果       
+  23          unsigned char num_add[]={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+  24          //max7219读写地址
+  25          unsigned char num_dat[]={0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,
+  26          0x89}; //max7219读写内容
+  27          
+  28          void delay_5ms()           //延时5ms
+  29          {
+  30   1              unsigned char i,j;
+  31   1              for(i=0;i<=25;i++)
+  32   1                      for(j=0;j<=200;j++);
+  33   1              
+  34   1      }
+  35          
+  36          unsigned char keyscan()//键盘动态扫描函数
+  37          {
+  38   1        unsigned char keyvalue=0;
+  39   1        unsigned char key_temp0,key_temp1;
+  40   1        P0=0x00;
+  41   1        P1=0x0f;               //行置1
+  42   1        key_temp0=P1;
+  43   1        if(key_temp0!=0x0f)    //低4位不全为1，则有键按下
+  44   1        {
+  45   2          delay_5ms(); //消除抖动
+  46   2              key_temp0=P1;
+  47   2              if(key_temp0!=0x0f)//重读输入值
+  48   2              {
+  49   3                P1=0xf0;              //列置1
+  50   3                key_temp1=P1;
+  51   3                if(key_temp0==0x0e)  //第一行有按下
+  52   3                {
+  53   4                  switch(key_temp1)
+  54   4                      {
+  55   5                        case 0xe0: 
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 2   
+
+  56   5                        keyvalue=4;
+  57   5                        break;           //第四列有按下
+  58   5                        case 0xd0: 
+  59   5                        keyvalue=3;
+  60   5                        break;
+  61   5                        case 0xb0: 
+  62   5                        keyvalue=2;
+  63   5                        break;
+  64   5                        case 0x70: 
+  65   5                        keyvalue=1;
+  66   5                        break;
+  67   5                        default: 
+  68   5                        keyvalue=0;
+  69   5                        break;           //无键按下
+  70   5                      }
+  71   4                }
+  72   3                else if(key_temp0==0x0d)
+  73   3                {
+  74   4                      switch(key_temp1)
+  75   4                      {
+  76   5                        case 0xe0: 
+  77   5                        keyvalue=8;
+  78   5                        break;
+  79   5                        case 0xd0: 
+  80   5                        keyvalue=7;
+  81   5                        break;
+  82   5                        case 0xb0: 
+  83   5                        keyvalue=6;
+  84   5                        break;
+  85   5                        case 0x70: 
+  86   5                        keyvalue=5;
+  87   5                        break;
+  88   5                        default: 
+  89   5                        keyvalue=0;
+  90   5                        break;
+  91   5                      }
+  92   4         
+  93   4                }
+  94   3                else if(key_temp0==0x0b)
+  95   3                {
+  96   4                      switch(key_temp1)
+  97   4                      {
+  98   5                        case 0xe0: 
+  99   5                        keyvalue=12;
+ 100   5                        break;
+ 101   5                        case 0xd0: 
+ 102   5                        keyvalue=11;
+ 103   5                        break;
+ 104   5                        case 0xb0: 
+ 105   5                        keyvalue=10;
+ 106   5                        break;
+ 107   5                        case 0x70: 
+ 108   5                        keyvalue=9;
+ 109   5                        break;
+ 110   5                        default: 
+ 111   5                        keyvalue=0;
+ 112   5                        break;
+ 113   5                      }
+ 114   4      
+ 115   4                }
+ 116   3                else if(key_temp0==0x07)
+ 117   3                {
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 3   
+
+ 118   4                      switch(key_temp1)
+ 119   4                      {
+ 120   5                        case 0xe0: 
+ 121   5                        keyvalue=16;
+ 122   5                        break;
+ 123   5                        case 0xd0: 
+ 124   5                        keyvalue=15;
+ 125   5                        break;
+ 126   5                        case 0xb0: 
+ 127   5                        keyvalue=14;
+ 128   5                        break;
+ 129   5                        case 0x70: 
+ 130   5                        keyvalue=13;
+ 131   5                        break;
+ 132   5                        default: 
+ 133   5                        keyvalue=0;
+ 134   5                        break;
+ 135   5                      }
+ 136   4                }
+ 137   3              }
+ 138   2        }
+ 139   1        P0=keyvalue&0x0f;      //保留扫描码低4位
+ 140   1        return keyvalue;
+ 141   1      }
+ 142          
+ 143          unsigned char scan(x)//扫描函数
+ 144          {
+ 145   1              switch(x)
+ 146   1              {
+ 147   2                      case 1:
+ 148   2                      P0=0x00;
+ 149   2                      break;
+ 150   2                      case 2:
+ 151   2                      P0=0x01;
+ 152   2                      break;
+ 153   2                      case 3:
+ 154   2                      P0=0x02;
+ 155   2                      break;
+ 156   2                      case 4:
+ 157   2                      P0=0x03;
+ 158   2                      break;
+ 159   2                      case 5:
+ 160   2                      P0=0x04;
+ 161   2                      break;
+ 162   2                      case 6:
+ 163   2                      P0=0x05;
+ 164   2                      break;
+ 165   2                      case 7:
+ 166   2                      P0=0x06;
+ 167   2                      break;
+ 168   2                      case 8:
+ 169   2                      P0=0x07;
+ 170   2                      break;
+ 171   2                      case 9:
+ 172   2                      P0=0x08;
+ 173   2                      break;
+ 174   2                      case 10:
+ 175   2                      P0=0x09;
+ 176   2                      break;
+ 177   2                      case 11:
+ 178   2                      P0=0x0a;
+ 179   2                      break;
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 4   
+
+ 180   2                      case 12:
+ 181   2                      P0=0x0b;
+ 182   2                      break;
+ 183   2                      case 13:
+ 184   2                      P0=0x0c;
+ 185   2                      break;
+ 186   2                      case 14:
+ 187   2                      P0=0x0d;
+ 188   2                      break;
+ 189   2                      case 15:
+ 190   2                      P0=0x0e;
+ 191   2                      break;
+ 192   2                      case 16:
+ 193   2                      P0=0x0f;
+ 194   2                      break;
+ 195   2                        default:
+ 196   2                        P0=0x00;
+ 197   2                        break;
+ 198   2              }
+ 199   1              return x;
+ 200   1      }
+ 201          
+ 202          void max7219_send(unsigned char add,unsigned char dat)
+ 203          //向max7219写指令函数
+ 204          {
+ 205   1        unsigned char ADS,i,j; //采用16位数据串行移位接受方式
+ 206   1        //单片机将16位二进制数逐位发送到DIN端
+ 207   1        //在CLK的每个上升沿将一位数据移入MAX7219内部的移位寄存器
+ 208   1        //当16位数据移入完后在LOAD上升沿将16位数据装入MAX7219的相应位置
+ 209   1        LOAD=0;  //拉低片选线，选中器件
+ 210   1        i=0;
+ 211   1        while(i<16)
+ 212   1        {
+ 213   2          if(i<8)
+ 214   2              {
+ 215   3                ADS=add;
+ 216   3              }
+ 217   2              else
+ 218   2              {
+ 219   3                ADS=dat;
+ 220   3              }
+ 221   2              for(j=8;j>=1;j--)
+ 222   2              {                                 
+ 223   3                DIN=ADS&0x80;   //每次取高字节
+ 224   3                ADS=ADS<<1;     //左移一位
+ 225   3                CLK=1;                  //在CLK的上升沿，发送地址
+ 226   3                CLK=0;                  //清零时钟总线
+ 227   3              }
+ 228   2              i=i+8;
+ 229   2        }
+ 230   1        LOAD=1;  //发送结束，上升沿锁存数据，数据被锁入芯片内部16位移位寄存器
+ 231   1      }
+ 232          
+ 233          void max7219_init()//max7219初始化函数
+ 234          {
+ 235   1        max7219_send(0x09,0xff);      //译码控制寄存器，选用全译码模式
+ 236   1        max7219_send(0x0a,0xff);      //亮度控制寄存器，设置初始亮度
+ 237   1        max7219_send(0x0b,0x07);      //扫描界限寄存器，8只led全用
+ 238   1        max7219_send(0x0c,0x01);      //关断模式寄存器，开启正常工作模式
+ 239   1        max7219_send(0x0f,0x00);      //测试控制寄存器，选择工作模式
+ 240   1      }
+ 241          
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 5   
+
+ 242          void time_display(unsigned char x)//时间显示
+ 243          {
+ 244   1        unsigned char i,j;
+ 245   1        i=x/10;
+ 246   1        j=x%10;
+ 247   1        max7219_send(num_add[1],num_dat[j]);
+ 248   1        max7219_send(num_add[0],num_dat[i]);
+ 249   1      }
+ 250          
+ 251          void score_display(unsigned char x)//抢答结果显示
+ 252          {
+ 253   1        unsigned char i,j;
+ 254   1        i=x/10;
+ 255   1        j=x%10;
+ 256   1        max7219_send(num_add[3],num_dat[j]);
+ 257   1        max7219_send(num_add[2],num_dat[i]);
+ 258   1      }
+ 259          
+ 260          unsigned char sequence_display(unsigned char j)//抢答顺序显示
+ 261          {
+ 262   1       
+ 263   1        if(j<10)
+ 264   1        { 
+ 265   2         max7219_send(num_add[5],num_dat[j]);
+ 266   2         max7219_send(num_add[4],num_dat[0]);
+ 267   2         }
+ 268   1         else if(j>10&&j<20)
+ 269   1        { 
+ 270   2         max7219_send(num_add[5],num_dat[j]);
+ 271   2         max7219_send(num_add[4],num_dat[1]);
+ 272   2         }
+ 273   1         else
+ 274   1         { 
+ 275   2         max7219_send(num_add[5],num_dat[6]);   //出错显示
+ 276   2         max7219_send(num_add[4],num_dat[6]);
+ 277   2         }    
+ 278   1         return j; 
+ 279   1      }
+ 280          
+ 281          void holderscan()//抢答时间设置，0-60s
+ 282          {
+ 283   1        time_display(second);
+ 284   1        score_display(people);
+ 285   1      
+ 286   1        if(~key_clear)//设置清除时间，如果有键按下，改变抢答时间
+ 287   1        {
+ 288   2          while(~key_clear);
+ 289   2              if(people)//如果抢答结果没有清空，抢答器重置
+ 290   2              {
+ 291   3                second=30;
+ 292   3                people=0;
+ 293   3              }
+ 294   2              }
+ 295   1        if(~time_add)
+ 296   1        {
+ 297   2         while(~time_add);//加时间     
+ 298   2         if(second<60)
+ 299   2         {
+ 300   3                second++;
+ 301   3        }
+ 302   2       }
+ 303   1         
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 6   
+
+ 304   1         if(~time_sub)        //减时间
+ 305   1        {
+ 306   2              while(~time_sub);
+ 307   2              if(second>0)
+ 308   2              {
+ 309   3                second--;
+ 310   3              }
+ 311   2              else
+ 312   2              second=30;
+ 313   2              }
+ 314   1      }
+ 315          
+ 316          void timer_init()
+ 317          {
+ 318   1        EA=1;           //开中断总开关
+ 319   1        ET0=1;                
+ 320   1        TMOD=0x01;   //定时器0方式1
+ 321   1        TH0=0xd8;
+ 322   1      //设定10ms中断一次，TH，TL各提供8位计数初值，当TL低8位计满回零向TH进位
+ 323   1      //TH计满回零置位TF
+ 324   1        TL0=0xef;
+ 325   1      }
+ 326          
+ 327          
+ 328          
+ 329           
+ 330          void main()
+ 331          {
+ 332   1        unsigned char seq;
+ 333   1        seq=1;
+ 334   1        while(1)
+ 335   1        {
+ 336   2        do{
+ 337   3          holderscan();//初始化，设置时间
+ 338   3        }while(begin);//开始按键，开始前进行初始设置,若未按下开始键
+ 339   2        while(~begin);//防抖
+ 340   2        max7219_init(); //芯片初始化
+ 341   2        timer_init();   //中断初始化
+ 342   2        TR0=1;                  //开始中断
+ 343   2        do{
+ 344   3          time_display(second);
+ 345   3              score_display(people);  
+ 346   3              scan();
+*** WARNING C209 IN LINE 346 OF 16位竞赛抢答器的设计.C: '_scan': too few actual parameters
+ 347   3              people=keyscan();
+ 348   3              if(people!=0)
+ 349   3              {
+ 350   4              sequence_display(seq);
+ 351   4              seq=sequence_display();
+*** WARNING C209 IN LINE 351 OF 16位竞赛抢答器的设计.C: '_sequence_display': too few actual parameters
+ 352   4              seq++;
+ 353   4              }
+ 354   3        }while((!people)&&(second));//运行直到抢答结束或者时间结束
+ 355   2        TR0=0;
+ 356   2        }
+ 357   1      }
+ 358          
+ 359          void timer0() interrupt 1  //计数器/时钟、声音
+ 360          {
+ 361   1        if(counter<100)
+ 362   1        {
+ 363   2          counter++;
+C51 COMPILER V9.00   16位竞赛抢答器的设计                                                  06/21/2019 16:05:32 PAGE 7   
+
+ 364   2              if(counter==50) //每0.5秒响一次
+ 365   2              {
+ 366   3                sounder=0;
+ 367   3              }
+ 368   2        }
+ 369   1        else
+ 370   1        {
+ 371   2          sounder=1;
+ 372   2          counter=0;
+ 373   2              second=second-1;   
+ 374   2              while(second==0)
+ 375   2              { 
+ 376   3                      sounder=0;
+ 377   3              }
+ 378   2        }     
+ 379   1      
+ 380   1        TH0=0xd8;//重新装载
+ 381   1        TL0=0xef;
+ 382   1        TR0=1;
+ 383   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    789    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     21       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  0 ERROR(S)
